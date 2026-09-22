@@ -1,0 +1,6 @@
+*.csv
+data/
+.env
+.databricks/
+*.pyc
+__pycache__/
