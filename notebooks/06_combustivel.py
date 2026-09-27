@@ -2,7 +2,7 @@
 # 06_combustivel
 # H5: litros por pax sobem com a ociosidade?
 # Filtro: eh_empresa_br, combustivel e litros_por_pax não nulos, 2022–2025
-# Caveat: combustível ANAC só para empresas brasileiras; aeronave/distância também movem L/pax
+# combustivel da ANAC so existe para empresa brasileira; aeronave e distancia tambem mudam L/pax
 
 from pyspark.sql import functions as F
 import pandas as pd
@@ -86,6 +86,6 @@ Decisão de produto:
 - Usar combustível só na página de ciência / caveat.
 - Preferir ASK ocioso e assentos fantasma como métricas centrais.
 
-Caveat: combustível ANAC só em empresa brasileira. L/pax mistura ociosidade,
+Resalva: combustível ANAC só em empresa brasileira. L/pax mistura ociosidade,
 distância e tipo de aeronave. Outliers com poucos pax distorcem a média da faixa 40%+.
 """)

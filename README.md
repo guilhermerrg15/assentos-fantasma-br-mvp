@@ -48,7 +48,7 @@ São 38 colunas. As que de fato empurram o problema: `ASSENTOS`, `PASSAGEIROS_PA
 
 A primeira linha do arquivo é um recado (`Atualizado em: ...`). Cabeçalho de verdade só na segunda. E `ASSENTOS` está lá. Não precisei inventar oferta.
 
-O restante das colunas, com tipo e significado, está em `[docs/data_dictionary.md](docs/data_dictionary.md)`. Link, tamanho e hash ficam em `[docs/data_sources.md](docs/data_sources.md)`.
+O restante das colunas, com tipo e significado, está em [`docs/data_dictionary.md`](docs/data_dictionary.md). Link, tamanho e hash ficam em [`docs/data_sources.md`](docs/data_sources.md).
 
 ### Licença
 
@@ -62,7 +62,7 @@ Na conta gratuita o notebook não alcança o site da ANAC. Então baixei o CSV n
 
 1. Download do [Dados_Estatisticos.csv](https://sistemas.anac.gov.br/dadosabertos/Voos%20e%20opera%C3%A7%C3%B5es%20a%C3%A9reas/Dados%20Estat%C3%ADsticos%20do%20Transporte%20A%C3%A9reo/Dados_Estatisticos.csv). O SHA-256 que eu conferi está em `docs/data_sources.md`.
 2. Upload para `/Volumes/workspace/raw/anac_files/Dados_Estatisticos.csv`.
-3. O `[notebooks/01_ingestao_raw.py](notebooks/01_ingestao_raw.py)` lê o arquivo (pula a linha 1, separador `;`, UTF-8), corta 2020 a 2025 (208.946 linhas) e grava `workspace.raw.anac_dados_estatisticos`.
+3. O [`notebooks/01_ingestao_raw.py`](notebooks/01_ingestao_raw.py) lê o arquivo (pula a linha 1, separador `;`, UTF-8), corta 2020 a 2025 (208.946 linhas) e grava `workspace.raw.anac_dados_estatisticos`.
 
 Três decisões dessa leitura, porque cada uma me quebrou a cabeça no começo:
 
@@ -100,7 +100,7 @@ No curso isso aparece como medalhão. Eu não renomeei schema para bronze/silver
 | Análise              | `workspace.analytics`    | status, cluster e as views do dashboard           |
 
 
-Campo a campo, tipo e de onde veio cada coluna: `[docs/data_dictionary.md](docs/data_dictionary.md)`, seções 1, 2 e 9.
+Campo a campo, tipo e de onde veio cada coluna: [`docs/data_dictionary.md`](docs/data_dictionary.md), seções 1, 2 e 9.
 
 Resumo do que cada tabela representa:
 
@@ -139,13 +139,13 @@ Separei em vários notebooks. Um arquivo só ia ficar impossível de achar as co
 
 | Ordem   | Arquivo                                                                                                                      | Função                                           |
 | ------- | ---------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------ |
-| 1       | `[notebooks/01_ingestao_raw.py](notebooks/01_ingestao_raw.py)`                                                               | lê o Volume e grava o `raw`                      |
-| 2       | `[notebooks/02_modelo_dimensional.py](notebooks/02_modelo_dimensional.py)`                                                   | staging, intermediário, dims, fato, marts, views |
-| 3       | `[notebooks/03_qualidade.py](notebooks/03_qualidade.py)`                                                                     | testes. Não cria tabela de negócio               |
-| 4 a 6   | `[04](notebooks/04_eda_desperdicio.py)`, `[05](notebooks/05_sazonalidade_geografia.py)`, `[06](notebooks/06_combustivel.py)` | gráficos e números da análise                    |
-| 7       | `[notebooks/07_clusters_rotas.py](notebooks/07_clusters_rotas.py)`                                                           | grava `rota_clusters`                            |
-| depois  | `[notebooks/08_catalogo_unity.py](notebooks/08_catalogo_unity.py)`                                                           | texto das tabelas no Catalog                     |
-| à parte | `[sql/](sql/)`                                                                                                               | 12 consultas, de `01` a `12`                     |
+| 1       | [`notebooks/01_ingestao_raw.py`](notebooks/01_ingestao_raw.py)                                                               | lê o Volume e grava o `raw`                      |
+| 2       | [`notebooks/02_modelo_dimensional.py`](notebooks/02_modelo_dimensional.py)                                                   | staging, intermediário, dims, fato, marts, views |
+| 3       | [`notebooks/03_qualidade.py`](notebooks/03_qualidade.py)                                                                     | testes. Não cria tabela de negócio               |
+| 4 a 6   | [`04`](notebooks/04_eda_desperdicio.py), [`05`](notebooks/05_sazonalidade_geografia.py), [`06`](notebooks/06_combustivel.py) | gráficos e números da análise                    |
+| 7       | [`notebooks/07_clusters_rotas.py`](notebooks/07_clusters_rotas.py)                                                           | grava `rota_clusters`                            |
+| depois  | [`notebooks/08_catalogo_unity.py`](notebooks/08_catalogo_unity.py)                                                           | texto das tabelas no Catalog                     |
+| à parte | [`sql/`](sql/)                                                                                                               | 12 consultas, de `01` a `12`                     |
 
 
 O que eu transformei, e por quê:
@@ -173,17 +173,17 @@ Tabelas gravadas no Catalog:
 
 ## Qualidade de Dados (Etapa 4.5)
 
-Isso está no `[03_qualidade.py](notebooks/03_qualidade.py)` e na query `[sql/12_load_factor_anomalo.sql](sql/12_load_factor_anomalo.sql)`. Passei pelos cinco eixos que o enunciado pede.
+Isso está no [`03_qualidade.py`](notebooks/03_qualidade.py) e na query [`sql/12_load_factor_anomalo.sql`](sql/12_load_factor_anomalo.sql). Olhei nulo, se o valor segue um padrão, duplicata, se o número faz sentido e se tem extremo distorcendo a conta.
 
-Completude. Combustível vazio em empresa estrangeira é regra da ANAC, não buraco meu. Não completei com zero. Achei 2 linhas com `ASK` nulo e assento maior que zero. No volume do fato isso é ruído; contei e deixei. Passageiro nulo eu trato como zero na ocupação do assento (`COALESCE`), senão o assento oferecido some da conta.
+Nulo e vazio. Combustível em branco em empresa estrangeira é regra da ANAC, não buraco meu. Não completei com zero. Achei 2 linhas com `ASK` nulo e assento maior que zero. No volume do fato isso é ruído; contei e deixei. Passageiro nulo eu trato como zero na ocupação do assento (`COALESCE`), senão o assento oferecido some da conta.
 
-Consistência. Natureza no arquivo: `DOMÉSTICA` e `INTERNACIONAL`. Eu trabalho com `DOMESTICA` sem acento. Grupo de voo: `REGULAR`, `NÃO REGULAR`, `IMPRODUTIVO`. O painel fica só no regular. Mês de 1 a 12 e ano de 2020 a 2025, conferidos no `raw` e no fato.
+Padrão. Natureza no arquivo: `DOMÉSTICA` e `INTERNACIONAL`. Eu trabalho com `DOMESTICA` sem acento. Grupo de voo: `REGULAR`, `NÃO REGULAR`, `IMPRODUTIVO`. O painel fica só no regular. Mês de 1 a 12 e ano de 2020 a 2025, conferidos no `raw` e no fato.
 
-Unicidade. Zero duplicata na chave do fato. Se aparecesse, eu parava.
+Duplicata. Zero repetição na chave do fato. Se aparecesse, eu parava.
 
-Acurácia. Assento ou passageiro negativo: zero linhas. Taxa de ociosidade fora de 0 a 1: zero linhas. Load factor (RPK/ASK) às vezes passa de 100% por arredondamento da ANAC. Eu corto em 105% e a query 12 conta quem passou.
+Se o número faz sentido. Assento ou passageiro negativo: zero linhas. Taxa de ociosidade fora de 0 a 1: zero linhas. Load factor (RPK/ASK) às vezes passa de 100% por arredondamento da ANAC. Eu corto em 105% e a query 12 conta quem passou.
 
-Extremos. O selo `ASSENTOS_FANTASMA` (40% ou mais vazios e pelo menos 10 mil assentos no mês) é raro. Eu tinha colocado um corte de 8 meses no ano e voltei zero rota. O máximo no dado é 4 meses, em 4 rotas. Ajustei a query 11 para isso, em vez de insistir num vilão que não existe. `litros_por_pax` explode quando quase ninguém embarcou. Por isso essa conta não foi para o KPI da página 1.
+Valor extremo. O selo `ASSENTOS_FANTASMA` (40% ou mais vazios e pelo menos 10 mil assentos no mês) é raro. Eu tinha colocado um corte de 8 meses no ano e voltei zero rota. O máximo no dado é 4 meses, em 4 rotas. Ajustei a query 11 para isso, em vez de forçar um padrão que o arquivo não tem. `litros_por_pax` explode quando quase ninguém embarcou. Por isso essa conta não foi para o KPI da página 1.
 
 Órfão do fato para empresa, tempo e rota: zero.
 
@@ -197,7 +197,7 @@ Cerca de 115,37 milhões de assentos vazios. Taxa de ociosidade 19,7%. Load fact
 
 Vinte por cento vazio, no agregado, não me parece colapso. Folga de 15% a 25% é comum nesse setor. Só uns 17% dos assentos estão em linhas com 28% ou mais de vazio. O que me incomodou foi a cauda, não a média.
 
-Consulta: `[sql/01_kpi_executivo.sql](sql/01_kpi_executivo.sql)`. Notebook: `[04_eda_desperdicio.py](notebooks/04_eda_desperdicio.py)`.
+Consulta: [`sql/01_kpi_executivo.sql`](sql/01_kpi_executivo.sql). Notebook: [`04_eda_desperdicio.py`](notebooks/04_eda_desperdicio.py).
 
 ![Página executiva, KPIs e série](docs/p01_pt1.png)
 ![Página executiva, volume por empresa](docs/p01_pt2.png)
@@ -208,7 +208,7 @@ Na metade do desperdício, sim. Não é aquele 80/20 de livro.
 
 No ranking 2022 a 2025 (piso de 10 mil assentos, 891 rotas), 90 rotas (cerca de 10%) levam 50% dos assentos vazios. Para chegar em 80% eu preciso de 281 rotas, uns 32%. Tem concentração. Não tem um punhado de culpado.
 
-Notebook `04` e `[sql/03_pareto_rotas.sql](sql/03_pareto_rotas.sql)`.
+Notebook `04` e [`sql/03_pareto_rotas.sql`](sql/03_pareto_rotas.sql).
 
 ### Pergunta 3. Volume versus taxa
 
@@ -265,7 +265,7 @@ Empresas brasileiras, 2022 a 2025, com combustível preenchido:
 
 Até 40% o número fica parado perto de 36 litros. Depois explode. O que mais faz sentido para mim é poucos passageiros no denominador, não a empresa queimando querosene à toa. A correlação deu uns 0,20. Fraca. E combustível neste arquivo só existe em empresa brasileira.
 
-Notebook: `[06_combustivel.py](notebooks/06_combustivel.py)`. Query: `[sql/08_combustivel_vs_ociosidade.sql](sql/08_combustivel_vs_ociosidade.sql)`.
+Notebook: [`06_combustivel.py`](notebooks/06_combustivel.py). Query: [`sql/08_combustivel_vs_ociosidade.sql`](sql/08_combustivel_vs_ociosidade.sql).
 
 ### Pergunta 8. Dá para agrupar rotas em tipos?
 
@@ -289,7 +289,7 @@ Lotado e muito vazio convivem. Crônico no calendário, o muito vazio quase não
 
 Eu consegui fechar o ciclo na nuvem: pergunta, coleta, dado no Databricks, modelo, ETL, qualidade e resposta no SQL, no Python e no painel.
 
-Das oito perguntas, 1 a 6 têm número e print. A 7 só vale na faixa de 40% para cima. A 8 tem cinco grupos e uma separação fraca (0,32). As duas ficaram no texto de propósito.
+Das oito perguntas, 1 a 6 têm número e print. A 7 só vale na faixa de 40% para cima. A 8 tem cinco grupos e uma separação fraca (0,32). Deixei as duas no texto.
 
 O que mais me atrasou: o CSV de 343 MB. A conta Free não baixa da ANAC pelo notebook, então foi download local e upload no Volume. A primeira linha do arquivo não é cabeçalho; se a leitura ignora isso, todas as colunas nascem erradas. O corte de “8 meses fantasma no ano” voltou zero linha, e o dado só tem 4 meses no teto. `litros_por_pax` mente quando quase ninguém embarcou. O cluster não separa como nos exemplos de aula.
 
@@ -300,12 +300,12 @@ O que este trabalho não tem, e eu sei: motivo do assento vazio, cada decolagem 
 ## Como repetir
 
 1. Baixe o CSV pelo link de `docs/data_sources.md` e envie para `/Volumes/workspace/raw/anac_files/`.
-2. Rode `[notebooks/01_ingestao_raw.py](notebooks/01_ingestao_raw.py)`.
+2. Rode [`notebooks/01_ingestao_raw.py`](notebooks/01_ingestao_raw.py).
 3. Rode o Job `assentos-fantasma-br-mvp` (notebooks `02`, `03` e `07`) ou rode esses três na ordem.
-4. Se quiser as descrições no Catalog, rode `[notebooks/08_catalogo_unity.py](notebooks/08_catalogo_unity.py)`.
+4. Se quiser as descrições no Catalog, rode [`notebooks/08_catalogo_unity.py`](notebooks/08_catalogo_unity.py).
 5. Abra o dashboard Assentos Fantasma BR.
 
-Tudo isso no Databricks Free Edition, tabela Delta, Unity Catalog. Não usei Colab.
+Tudo isso no Databricks Free Edition, tabela Delta, Unity Catalog.
 
 ## O que tem neste repositório
 

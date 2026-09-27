@@ -1,6 +1,6 @@
 # Dicionário de dados
 
-Aqui eu anotei como cada coluna chega no CSV da ANAC, como eu chamei no projeto e o que ela significa na prática.
+Aqui eu anotei como cada coluna chega no CSV da ANAC, como eu chamei no projeto e o que ela significa.
 
 Fonte: ANAC, Dados Estatísticos do Transporte Aéreo.
 Arquivo: `Dados_Estatisticos.csv` (não vai para o GitHub).

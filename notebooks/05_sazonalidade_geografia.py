@@ -113,10 +113,10 @@ Tempo (2022–2025):
 Espaço (origem, 2022–2025):
 - Em VOLUME, São Paulo lidera (29,0 milhões de assentos fantasma), depois RJ, DF e MG.
   Isso acompanha o tamanho da malha, não prova pior gestão.
-- Em TAXA, Acre lidera (38,0%), depois PA, MA e PI — rotas mais finas, Norte/Nordeste.
+- Em TAXA, Acre lidera (38,0%), depois PA, MA e PI. Rotas mais finas, Norte/Nordeste.
 - Volume e taxa contam histórias diferentes: SP desperdiça mais assentos; AC voa mais vazio em %.
 
-Caveat: UF de origem. Ociosidade alta no Norte pode ser aeronave mínima / malha de serviço, não "vergonha".
+Resalva: UF de origem. Ociosidade alta no Norte pode ser aeronave mínima ou malha de serviço, não "vergonha".
 """)
 
 # COMMAND ----------
