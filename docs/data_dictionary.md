@@ -156,3 +156,148 @@ Ficam na tabela limpa, sem uso inventado.
 5. Não existe preço, motivo do vazio nem dado de cada voo — só o mês.
 6. Na lista das rotas “mais vazias em %”, o load factor às vezes
    não combina com a conta de assentos. Nessa conversa, use o ranking de **volume**.
+
+---
+
+## 9. Catálogo das tabelas do modelo
+
+O Unity Catalog no Databricks guarda os mesmos objetos.
+Esta seção descreve **cada tabela**: o que é, o que uma linha representa,
+de onde veio e os campos (nome, tipo, domínio, origem).
+
+Linhagem geral: CSV ANAC → Volume → `raw` → `staging` → `intermediate` →
+`marts` (fato + dimensões + marts) e `analytics`.
+
+### 9.1 `workspace.raw.anac_dados_estatisticos`
+
+- **Contexto:** dado bruto 2020–2025, como no CSV (só o corte de ano).
+- **Uma linha:** empresa + mês + trecho origem→destino + natureza + grupo de voo.
+- **Linhagem:** arquivo no Volume `anac_files/Dados_Estatisticos.csv`.
+  Sem rename. Sem filtro de doméstico/regular.
+- **Volume esperado:** ~208.946 linhas, 38 colunas.
+- **Campos:** os 38 nomes oficiais da seção 1. Na leitura, **todos entram como texto**.
+  Domínio de `NATUREZA`: `DOMÉSTICA`, `INTERNACIONAL`.
+  Domínio de `GRUPO_DE_VOO`: `REGULAR`, `NÃO REGULAR`, `IMPRODUTIVO`.
+  `ANO`: 2020 a 2025 neste recorte. `MES`: 1 a 12.
+  `ASSENTOS` e passageiros: número ≥ 0 quando preenchidos; podem vir vazios.
+
+### 9.2 `workspace.staging.stg_anac_voos`
+
+- **Contexto:** o mesmo conteúdo do `raw`, com nome interno, tipo e texto limpo.
+- **Uma linha:** igual ao `raw` (ainda tem internacional e não regular).
+- **Linhagem:** `SELECT` do `raw`. TRIM, UPPER, `TRY_CAST`,
+  `natureza_norm` / `grupo_voo_norm` (sem acento), `ano_mes` = ano×100+mês.
+- **Campos principais**
+
+| Campo | Tipo | Domínio / regra | Origem |
+|---|---|---|---|
+| `empresa_sigla` | texto | código da empresa, sem espaço nas pontas | `EMPRESA_SIGLA` |
+| `ano`, `mes` | inteiro | ano 2020–2025; mês 1–12 | `ANO`, `MES` |
+| `ano_mes` | inteiro | 202001 a 202512 | calculado |
+| `natureza` | texto | como no arquivo (`DOMÉSTICA`, …) | `NATUREZA` |
+| `natureza_norm` | texto | `DOMESTICA` ou `INTERNACIONAL` | `NATUREZA` sem acento |
+| `grupo_voo_norm` | texto | `REGULAR`, `NAO REGULAR`, `IMPRODUTIVO` | `GRUPO_DE_VOO` sem acento |
+| `assentos` | inteiro | ≥ 0 ou nulo | `ASSENTOS` |
+| `passageiros_pagos`, `passageiros_gratis` | inteiro | ≥ 0 ou nulo | CSV |
+| `ask`, `rpk`, `combustivel_litros` | decimal | ≥ 0 ou nulo | CSV |
+| carga, correio, ATK, RTK, payload, horas, bagagem | decimal | guardados, fora do painel | CSV |
+
+### 9.3 `workspace.intermediate.int_voos_mensais`
+
+- **Contexto:** base pronta para o fato: filtro do MVP + contas de negócio.
+- **Uma linha:** empresa-trecho-mês **doméstico regular** com `assentos > 0`.
+- **Linhagem:** `staging`, com `WHERE natureza_norm = 'DOMESTICA'`
+  e `grupo_voo_norm = 'REGULAR'` e `assentos > 0`.
+- **Campos novos** (além dos do staging): ver seção 2.
+  `status_rota` ∈ `FORA_ESCOPO`, `SUBOFERTA`, `ASSENTOS_FANTASMA`,
+  `DESPERDICIO_MODERADO`, `EFICIENTE` (primeira regra que encaixar, seção 5).
+  `taxa_ociosidade`: 0 a 1. `load_factor`: 0 a 1,05.
+
+### 9.4 Dimensões (`workspace.marts`)
+
+Todas saem de valores distintos do intermediário. Sem fonte de fora.
+
+**`dim_tempo`** — uma linha = um `ano_mes`.
+
+| Campo | Tipo | Domínio | Origem |
+|---|---|---|---|
+| `ano` | inteiro | 2020–2025 | intermediário |
+| `mes` | inteiro | 1–12 | intermediário |
+| `ano_mes` | inteiro | chave | intermediário |
+| `trimestre` | inteiro | 1–4 | calculado do mês |
+| `semestre` | inteiro | 1 ou 2 | calculado do mês |
+| `eh_pandemia` | verdadeiro/falso | verdadeiro se ano 2020 ou 2021 | calculado |
+
+**`dim_empresa`** — uma linha = uma `empresa_sigla`.
+Campos: `empresa_sigla` (texto), `empresa_nome` (texto),
+`empresa_nacionalidade` (texto), `eh_empresa_br` (verdadeiro/falso).
+Linhagem: `MAX` por sigla no intermediário.
+
+**`dim_aeroporto`** — uma linha = um `aero_sigla`.
+Campos: `aero_sigla`, `aero_nome`, `aero_uf`, `aero_regiao`, `aero_pais`, `aero_continente` (textos).
+`aero_uf` pode vir vazio se o aeroporto for fora do Brasil.
+Linhagem: origens e destinos unidos (`UNION ALL`) e depois um registro por sigla.
+
+**`dim_rota`** — uma linha = um `rota_id` (`SBSP-SBRJ`). Ida e volta são rotas diferentes.
+Campos: `rota_id`, siglas e nomes de origem/destino, UFs, regiões, `eh_domestica` (sempre verdadeiro neste recorte).
+
+**`dim_natureza`** — `natureza` + `natureza_norm`. Neste recorte só doméstica.
+
+**`dim_grupo_voo`** — `grupo_voo` + `grupo_voo_norm`. Neste recorte só regular.
+
+### 9.5 `workspace.marts.fct_voos_mensais`
+
+- **Contexto:** fato do esquema estrela. Alimenta marts, qualidade e o painel.
+- **Uma linha:** mesma chave do intermediário (empresa + mês + trecho + natureza + grupo).
+- **Linhagem:** colunas escolhidas do `int_voos_mensais` (sem JOIN extra).
+- **Campos**
+
+| Campo | Tipo | Domínio | Origem |
+|---|---|---|---|
+| `empresa_sigla` | texto | chave | intermediário |
+| `empresa_nome`, `empresa_nacionalidade` | texto | texto livre / país | intermediário |
+| `eh_empresa_br` | verdadeiro/falso | combustível só faz sentido se verdadeiro | nacionalidade contém BRASIL |
+| `ano`, `mes`, `ano_mes` | inteiro | 2020–2025; 1–12 | intermediário |
+| `aero_origem_*`, `aero_destino_*` | texto | sigla, nome, UF, região | intermediário |
+| `rota_id` | texto | `ORIGEM-DESTINO` | concatenação |
+| `natureza`, `natureza_norm`, `grupo_voo`, `grupo_voo_norm` | texto | ver 9.2 | intermediário |
+| `passageiros_pagos`, `passageiros_gratis`, `passageiros_totais` | inteiro | ≥ 0 | CSV + soma |
+| `assentos`, `assentos_fantasma` | inteiro | ≥ 0; fantasma ≤ assentos | CSV + conta |
+| `taxa_ociosidade` | decimal | 0 a 1 | conta |
+| `ask`, `rpk`, `ask_ocioso` | decimal | ≥ 0 ou nulo | CSV + conta |
+| `load_factor` | decimal | 0 a 1,05 | RPK/ASK limitado |
+| `combustivel_litros`, `litros_por_pax`, `eficiencia_combustivel` | decimal | nulo se estrangeira ou sem pax | CSV + conta |
+| `distancia_km`, `decolagens` | decimal / inteiro | ≥ 0 ou nulo | CSV |
+| `status_rota` | texto | 5 selos da seção 5 | regra |
+
+### 9.6 Marts de consumo
+
+**`mart_kpi_rota_mensal`** — uma linha = uma rota + um mês (empresas somadas).
+Linhagem: `GROUP BY` do fato. Recalcula taxa, load factor e `status_rota` depois da soma.
+Campos: `rota_id`, aeroportos, `ano`/`mes`/`ano_mes`, totais de pax/assentos/fantasma/ASK/RPK/decolagens/combustível, taxa, load factor, status.
+
+**`mart_ociosidade_empresa_mensal`** — uma linha = uma empresa + um mês.
+Linhagem: `GROUP BY` do fato.
+
+**`mart_ociosidade_aeroporto_mensal`** — uma linha = um aeroporto de **origem** + um mês.
+Linhagem: `GROUP BY` do fato.
+
+**`mart_ranking_assentos_fantasma`** — uma linha = uma rota no período 2022–2025,
+só se `assentos >= 10000`. Campos extra: `rank_volume`, `rank_taxa` (inteiros ≥ 1).
+
+**`analytics.mart_status_rota`** — cópia enxuta do KPI de rota (rota-mês + selo).
+Linhagem: `mart_kpi_rota_mensal`.
+
+**`analytics.rota_clusters`** — uma linha = uma rota do recorte de treino
+(2022–2025, ≥ 12 meses, ≥ 50 mil assentos).
+
+| Campo | Tipo | Domínio | Origem |
+|---|---|---|---|
+| `rota_id` | texto | igual à dim | KPI de rota |
+| `n_meses` | inteiro | ≥ 12 | contagem |
+| `assentos`, `assentos_fantasma` | número | ≥ 0 | soma |
+| `ociosidade_media`, `ociosidade_dp`, `lf_medio` | decimal | 0–1 / ≥ 0 | média e desvio |
+| `cluster_id` | inteiro | 0 a 4 | K-means |
+| `cluster_nome` | texto | `INSTAVEL`, `ALTO_VOLUME_EFICIENTE`, `OCIOSO_CRONICO`, `LOTADO`, `OCIOSO_MODERADO` | mapa do notebook 07 |
+
+Views `vw_pbi_*` em `analytics` não são tabelas novas: só leem os marts para o dashboard.
